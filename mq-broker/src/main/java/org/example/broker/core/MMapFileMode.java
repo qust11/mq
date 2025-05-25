@@ -1,7 +1,14 @@
 package org.example.broker.core;
 
-import com.example.mqbroker.util.MMapUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.example.broker.cache.CommonCache;
+import org.example.broker.constant.BrokerConstant;
+import org.example.broker.model.CommitLogMessageModel;
+import org.example.broker.model.EagleMqTopicModel;
+import org.example.broker.model.TopicLatestCommitLogModel;
+import org.example.broker.util.ByteConvertUtil;
+import org.example.broker.util.CommonLogFileNameUtil;
+import org.example.broker.util.MMapUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -22,7 +29,8 @@ public class MMapFileMode {
     private File file;
     private FileChannel fileChannel;
 
-    public void loadFileInMMap(String filePath, int offset, int length) {
+    public void loadFileInMMap(String topicName, int offset, int length) {
+        String filePath = getLatestFileName(topicName);
         try {
             log.info("load file:{}", filePath);
             file = new File(filePath);
@@ -36,6 +44,48 @@ public class MMapFileMode {
         }
     }
 
+    public String getLatestFileName(String topicName) {
+        EagleMqTopicModel eagleMqTopicModel = CommonCache.TOPIC_MODEL_MAP.get(topicName);
+        if (eagleMqTopicModel == null) {
+            log.error("topic not exists topicName ={}", topicName);
+            throw new IllegalStateException("topic not exists");
+        }
+
+        TopicLatestCommitLogModel latestCommitLog = eagleMqTopicModel.getLatestCommitLog();
+        if (latestCommitLog == null) {
+            log.error("topic's latestCommitLog not exists topicName ={}", topicName);
+            throw new IllegalStateException("topic's latestCommitLog not exists");
+        }
+        int remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset();
+        String fileName;
+        if (remainLength <= 0) {
+            log.info("topic's latestCommitLog exists topicName ={}", topicName);
+            return this.createNewFile(topicName, latestCommitLog);
+        } else {
+            // 还有机会写入文件
+            fileName = latestCommitLog.getFileName();
+            return CommonCache.getGlobalProperties().getMqHome() +
+                    BrokerConstant.BASIC_STORE_PATH +
+                    topicName + "\\" + fileName;
+        }
+
+    }
+
+    private String createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
+        String newFileName = CommonLogFileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
+        String filePath = CommonCache.getGlobalProperties().getMqHome() +
+                BrokerConstant.BASIC_STORE_PATH +
+                topicName + "\\" + newFileName;
+        try {
+            File newFile = new File(filePath);
+            newFile.createNewFile();
+        } catch (Exception e) {
+            log.error("file create has error ", e);
+            throw new IllegalStateException("file create has error ");
+        }
+        return filePath;
+    }
+
     public byte[] readContent(int offset, int size) {
         mappedByteBuffer.position(offset);
         byte[] bytes = new byte[size];
@@ -46,11 +96,22 @@ public class MMapFileMode {
         return bytes;
     }
 
-    public void writeContent(byte[] bytes, boolean force) {
+    public void writeContent(CommitLogMessageModel commitLogMessageModel, boolean force) {
+
+        byte[] bytes = getBytes(commitLogMessageModel);
         mappedByteBuffer.put(bytes);
         if (force) {
             mappedByteBuffer.force();
         }
+    }
+
+    private static byte[] getBytes(CommitLogMessageModel commitLogMessageModel) {
+        byte[] contentBytes = commitLogMessageModel.getContent();
+        byte[] sizeBytes = ByteConvertUtil.intToByteArray(commitLogMessageModel.getSize());
+        byte[] bytes = new byte[sizeBytes.length + contentBytes.length];
+        System.arraycopy(sizeBytes, 0, bytes, 0, sizeBytes.length);
+        System.arraycopy(contentBytes, 0, bytes, sizeBytes.length, contentBytes.length);
+        return bytes;
     }
 
 //    public void clear() {
@@ -111,6 +172,7 @@ public class MMapFileMode {
         else
             return viewed(viewedBuffer);
     }
+
     public static void main(String[] args) {
         MMapUtil mMapUtil = new MMapUtil();
         mMapUtil.loadFileInMMap("mq-broker/src/main/java/com/example/mqbroker/order/000000", 0, 1024 * 1024);

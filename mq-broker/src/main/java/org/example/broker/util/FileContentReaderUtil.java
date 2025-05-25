@@ -1,13 +1,10 @@
 package org.example.broker.util;
 
 import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
-import org.example.broker.model.TopicModel;
+import org.example.broker.model.EagleMqTopicModel;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -28,8 +25,8 @@ public class FileContentReaderUtil {
         return sb.toString();
     }
 
-    public static List<TopicModel> readTopicModel(String filePath) {
+    public static List<EagleMqTopicModel> readTopicModel(String filePath) {
         String content = readContent(filePath);
-        return JSONArray.parseArray(content, TopicModel.class);
+        return JSONArray.parseArray(content, EagleMqTopicModel.class);
     }
 }

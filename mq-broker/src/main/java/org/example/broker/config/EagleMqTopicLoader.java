@@ -2,10 +2,14 @@ package org.example.broker.config;
 
 import io.micrometer.common.util.StringUtils;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.model.TopicModel;
+import org.example.broker.constant.BrokerConstant;
+import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.util.FileContentReaderUtil;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author qushutao
@@ -18,11 +22,12 @@ public class EagleMqTopicLoader {
         if (StringUtils.isBlank(mqHome)) {
             throw new IllegalStateException("MQ HOME is empty");
         }
-        String jsonPaht = mqHome + "/broker/config/mq_topic.json";
+        String jsonPath = mqHome + BrokerConstant.CONFIG_TOPIC_JSON_PATH;
 
-        List<TopicModel> topicModel = FileContentReaderUtil.readTopicModel(jsonPaht);
+        List<EagleMqTopicModel> eagleMqTopicModel = FileContentReaderUtil.readTopicModel(jsonPath);
+        CommonCache.setTopicModelList(eagleMqTopicModel);
 
-        CommonCache.setTopicModelList(topicModel);
-
+        Map<String, EagleMqTopicModel> collect = eagleMqTopicModel.stream().collect(Collectors.toMap(EagleMqTopicModel::getTopic, Function.identity()));
+        CommonCache.setTopicModelMap(collect);
     }
 }

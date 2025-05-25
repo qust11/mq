@@ -7,7 +7,7 @@ import lombok.Data;
  * @since 2025-05-25
  */
 @Data
-public class MqQueueModel {
+public class EagleMqQueueModel {
 
     private Integer id;
 
