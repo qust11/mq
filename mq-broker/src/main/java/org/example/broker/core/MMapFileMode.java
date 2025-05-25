@@ -1,4 +1,4 @@
-package com.example.mqbroker.core;
+package org.example.broker.core;
 
 import com.example.mqbroker.util.MMapUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -17,13 +17,14 @@ import java.nio.channels.FileChannel;
  * @since 2025/5/25-0:04
  */
 @Slf4j
-public class MessageFileMode {
+public class MMapFileMode {
     private MappedByteBuffer mappedByteBuffer;
     private File file;
     private FileChannel fileChannel;
 
     public void loadFileInMMap(String filePath, int offset, int length) {
         try {
+            log.info("load file:{}", filePath);
             file = new File(filePath);
             if (!file.exists()) {
                 throw new FileNotFoundException("file not exists");
