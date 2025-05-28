@@ -1,13 +1,16 @@
 package org.example.broker.core;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.CommitLogMessageModel;
+import org.example.broker.model.ConsumerQueueDetailModel;
 import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.model.TopicLatestCommitLogModel;
-import org.example.broker.util.ByteConvertUtil;
-import org.example.broker.util.CommonLogFileNameUtil;
+import org.example.broker.util.CommitLogFileNameUtil;
 import org.example.broker.util.MMapUtil;
 
 import java.io.File;
@@ -18,6 +21,9 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author qushutao
@@ -26,64 +32,68 @@ import java.nio.channels.FileChannel;
 @Slf4j
 public class MMapFileMode {
     private MappedByteBuffer mappedByteBuffer;
-    private File file;
+
     private FileChannel fileChannel;
 
-    public void loadFileInMMap(String topicName, int offset, int length) {
-        String filePath = getLatestFileName(topicName);
+    private String topicName;
+
+    private Lock lock;
+
+    public void loadFileInMMap(String topicName, long offset, long length) {
+        String filePath = getLatestFilePath(topicName);
+
         try {
             log.info("load file:{}", filePath);
-            file = new File(filePath);
-            if (!file.exists()) {
-                throw new FileNotFoundException("file not exists");
-            }
-            fileChannel = new RandomAccessFile(file, "rw").getChannel();
-            mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, offset, length);
+            doMMap(filePath, offset, length);
+            this.topicName = topicName;
+            this.lock = new ReentrantLock();
         } catch (IOException e) {
             log.error("load file error", e);
         }
     }
 
-    public String getLatestFileName(String topicName) {
-        EagleMqTopicModel eagleMqTopicModel = CommonCache.TOPIC_MODEL_MAP.get(topicName);
-        if (eagleMqTopicModel == null) {
-            log.error("topic not exists topicName ={}", topicName);
-            throw new IllegalStateException("topic not exists");
+    private void doMMap(String filePath, long offset, long length) throws IOException {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new FileNotFoundException("file not exists");
         }
-
-        TopicLatestCommitLogModel latestCommitLog = eagleMqTopicModel.getLatestCommitLog();
-        if (latestCommitLog == null) {
-            log.error("topic's latestCommitLog not exists topicName ={}", topicName);
-            throw new IllegalStateException("topic's latestCommitLog not exists");
-        }
-        int remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset();
-        String fileName;
-        if (remainLength <= 0) {
-            log.info("topic's latestCommitLog exists topicName ={}", topicName);
-            return this.createNewFile(topicName, latestCommitLog);
-        } else {
-            // 还有机会写入文件
-            fileName = latestCommitLog.getFileName();
-            return CommonCache.getGlobalProperties().getMqHome() +
-                    BrokerConstant.BASIC_STORE_PATH +
-                    topicName + "\\" + fileName;
+        try (FileChannel ignored = this.fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
+            this.mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, offset, length);
         }
 
     }
 
-    private String createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
-        String newFileName = CommonLogFileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
-        String filePath = CommonCache.getGlobalProperties().getMqHome() +
-                BrokerConstant.BASIC_STORE_PATH +
-                topicName + "\\" + newFileName;
+    public String getLatestFilePath(String topicName) {
+        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
+
+        long remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset().get();
+        String fileName;
+        if (remainLength <= 0) {
+            log.info("topic's latestCommitLog exists topicName ={}", topicName);
+            CommitLogFileInfo newFile = this.createNewFile(topicName, latestCommitLog);
+            fileName = newFile.getFileName();
+        } else {
+            // 还有机会写入文件
+            fileName = latestCommitLog.getFileName();
+        }
+        return CommitLogFileNameUtil.buildCommitLogFileName(topicName, fileName);
+
+    }
+
+    private CommitLogFileInfo createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
+        String newFileName = CommitLogFileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
+        String newFilePath = CommitLogFileNameUtil.buildCommitLogFileName(topicName, newFileName);
         try {
-            File newFile = new File(filePath);
+            File newFile = new File(newFilePath);
             newFile.createNewFile();
         } catch (Exception e) {
             log.error("file create has error ", e);
             throw new IllegalStateException("file create has error ");
         }
-        return filePath;
+        latestCommitLog.setOffset(new AtomicLong(0));
+        latestCommitLog.setOffsetLimit(BrokerConstant.COMMIT_LOG_FILE_SIZE);
+        latestCommitLog.setFileName(newFileName);
+        return new CommitLogFileInfo(newFileName, newFilePath);
     }
 
     public byte[] readContent(int offset, int size) {
@@ -97,39 +107,69 @@ public class MMapFileMode {
     }
 
     public void writeContent(CommitLogMessageModel commitLogMessageModel, boolean force) {
+        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
+        try {
+            lock.lock();
+            // 校验是否可以当前写入文件有空闲空间
+            checkCommitLogHasEnableSpace(commitLogMessageModel);
 
-        byte[] bytes = getBytes(commitLogMessageModel);
-        mappedByteBuffer.put(bytes);
-        if (force) {
-            mappedByteBuffer.force();
+            byte[] bytes = commitLogMessageModel.getBytes();
+            mappedByteBuffer.put(bytes);
+            long sourceIndex = latestCommitLog.getOffset().get();
+            latestCommitLog.getOffset().addAndGet(bytes.length);
+            this.dispatcher(bytes, sourceIndex);
+            if (force) {
+                mappedByteBuffer.force();
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
-    private static byte[] getBytes(CommitLogMessageModel commitLogMessageModel) {
-        byte[] contentBytes = commitLogMessageModel.getContent();
-        byte[] sizeBytes = ByteConvertUtil.intToByteArray(commitLogMessageModel.getSize());
-        byte[] bytes = new byte[sizeBytes.length + contentBytes.length];
-        System.arraycopy(sizeBytes, 0, bytes, 0, sizeBytes.length);
-        System.arraycopy(contentBytes, 0, bytes, sizeBytes.length, contentBytes.length);
-        return bytes;
+    private void dispatcher(byte[] bytes, long msgIndex) {
+        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
+        String fileName = latestCommitLog.getFileName();
+
+        ConsumerQueueDetailModel consumerQueueDetailModel = new ConsumerQueueDetailModel();
+        consumerQueueDetailModel.setCommitLogFileName(Integer.parseInt(fileName));
+        consumerQueueDetailModel.setMsgIndex(msgIndex);
+        consumerQueueDetailModel.setMsgLength(bytes.length);
+
     }
 
-//    public void clear() {
-//        if (!mappedByteBuffer.isDirect()) {
-//            return;
-//        }
-//        try {
-//            Method cleanerMethod = mappedByteBuffer.getClass().getMethod("cleaner");
-//            cleanerMethod.setAccessible(true);
-//            Object cleaner = cleanerMethod.invoke(mappedByteBuffer);
-//            if (cleaner != null) {
-//                Method cleanMethod = cleaner.getClass().getMethod("clean");
-//                cleanMethod.invoke(cleaner);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+    private TopicLatestCommitLogModel getTopicLatestCommitLogModel(String topicName) {
+        EagleMqTopicModel topicModel = CommonCache.getTopicModel(topicName);
+        if (topicModel == null) {
+            log.error("topic not exists topicName ={}", topicName);
+            throw new IllegalStateException("topic not exists");
+        }
+        TopicLatestCommitLogModel latestCommitLog = topicModel.getLatestCommitLog();
+        if (latestCommitLog == null) {
+            log.error("topic's latestCommitLog not exists topicName ={}", topicName);
+            throw new IllegalStateException("topic's latestCommitLog not exists");
+        }
+        return latestCommitLog;
+    }
+
+    private void checkCommitLogHasEnableSpace(CommitLogMessageModel commitLogMessageModel) {
+
+        EagleMqTopicModel topicModel = CommonCache.getTopicModel(topicName);
+        TopicLatestCommitLogModel latestCommitLog = topicModel.getLatestCommitLog();
+
+        long remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset().get();
+
+        if (remainLength < commitLogMessageModel.getContent().length) {
+            // 创建信息的文件
+            CommitLogFileInfo commitLogFileInfo = this.createNewFile(topicName, latestCommitLog);
+
+            try {
+                doMMap(commitLogFileInfo.getFilePath(), 0, BrokerConstant.COMMIT_LOG_FILE_SIZE);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
 
     public void clean() {
         if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity() == 0)
@@ -173,11 +213,21 @@ public class MMapFileMode {
             return viewed(viewedBuffer);
     }
 
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class CommitLogFileInfo {
+
+        private String fileName;
+
+        private String filePath;
+    }
+
     public static void main(String[] args) {
         MMapUtil mMapUtil = new MMapUtil();
         mMapUtil.loadFileInMMap("mq-broker/src/main/java/com/example/mqbroker/order/000000", 0, 1024 * 1024);
         byte[] bytes = mMapUtil.readContent(0, 1024);
-        System.out.println(new String(bytes));
+        log.info(new String(bytes));
         mMapUtil.clean();
     }
 

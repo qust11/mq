@@ -5,6 +5,8 @@ import org.example.broker.model.EagleMqTopicModel;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -28,5 +30,15 @@ public class FileContentReaderUtil {
     public static List<EagleMqTopicModel> readTopicModel(String filePath) {
         String content = readContent(filePath);
         return JSONArray.parseArray(content, EagleMqTopicModel.class);
+    }
+
+    public static void writeTopicModel(String filePath, List<EagleMqTopicModel> topicModelList){
+        String content = JSONArray.toJSONString(topicModelList);
+        try (FileWriter fileWriter = new FileWriter(filePath)) {
+                fileWriter.write(content);
+                fileWriter.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

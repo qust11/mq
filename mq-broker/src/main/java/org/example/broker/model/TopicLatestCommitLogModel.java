@@ -2,6 +2,8 @@ package org.example.broker.model;
 
 import lombok.Data;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * @author qushutao
  * @since 2025/5/25-20:45
@@ -13,8 +15,9 @@ public class TopicLatestCommitLogModel {
     private String fileName;
 
     // 文件最大偏移量
-    private int offsetLimit;
+    private long offsetLimit;
 
     // 偏移量最新写入文件的位置
-    private int offset;
+    private AtomicLong offset;
+
 }

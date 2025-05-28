@@ -1,27 +1,33 @@
 package org.example.broker.util;
 
 
+import lombok.extern.slf4j.Slf4j;
+import org.example.broker.constant.BrokerConstant;
+import sun.misc.Unsafe;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author qushutao
  * @since 2025-05-24
  * --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
  */
+@Slf4j
 public class MMapUtil {
     private MappedByteBuffer mappedByteBuffer;
     private File file;
     private FileChannel fileChannel;
-
-    public void loadFileInMMap(String filePath, int offset, int length) {
+    public void loadFileInMMap(String filePath, long offset, long length) {
         try {
             file = new File(filePath);
             if (!file.exists()) {
@@ -51,7 +57,7 @@ public class MMapUtil {
         }
     }
 
-//    public void clear() {
+    //    public void clear() {
 //        if (!mappedByteBuffer.isDirect()) {
 //            return;
 //        }
@@ -67,6 +73,7 @@ public class MMapUtil {
 //            e.printStackTrace();
 //        }
 //    }
+
 
     public void clean() {
         if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity() == 0)
@@ -109,11 +116,29 @@ public class MMapUtil {
         else
             return viewed(viewedBuffer);
     }
+
     public static void main(String[] args) {
         MMapUtil mMapUtil = new MMapUtil();
-        mMapUtil.loadFileInMMap("mq-broker/src/main/java/com/example/mqbroker/order/000000", 0, 1024 * 1024);
+        mMapUtil.loadFileInMMap("E:\\developeCode\\java\\bastmq\\broker\\store\\order_cancel_topic/00000000", 0, 1024 * 1024);
         byte[] bytes = mMapUtil.readContent(0, 1024);
-        System.out.println(new String(bytes));
-        mMapUtil.clean();
+
+//        List<Thread> threads = new ArrayList<>();
+//        for (int i = 0; i < 10; i++) {
+//            int finalI = i;
+//            Thread thread = new Thread(() -> {
+//                mMapUtil.writeContent(("test-content" + finalI).getBytes(), true);
+//            });
+//            threads.add(thread);
+//        }
+//        threads.forEach(Thread::start);
+//        threads.forEach(thread -> {
+//            try {
+//                thread.join();
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//        });
+//        byte [] bytes = mMapUtil.readContent(0, 1024);
+//        log.info(new String(bytes));
     }
 }

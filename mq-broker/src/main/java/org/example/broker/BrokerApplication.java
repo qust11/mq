@@ -8,7 +8,11 @@ import org.example.broker.core.CommitLogAppendHandler;
 import org.example.broker.model.EagleMqTopicModel;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author qushutao
@@ -37,16 +41,35 @@ public class BrokerApplication {
         for (EagleMqTopicModel eagleMqTopicModel : eagleMqTopicModelList) {
             String topicName = eagleMqTopicModel.getTopic();
             commitLogAppendHandler.prepareMMapLoading(topicName);
-            commitLogAppendHandler.appendMessage(topicName, "hello world this is good".getBytes());
-            byte[] bytes = commitLogAppendHandler.readMessage(topicName);
-            log.info("topicName: {}, bytes: {}", topicName, new String(bytes));
+//            commitLogAppendHandler.appendMessage(topicName, "hello world this is good".getBytes());
+//            byte[] bytes = commitLogAppendHandler.readMessage(topicName);
+//            log.info("topicName: {}, bytes: {}", topicName, new String(bytes));
         }
-
-
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 //        SpringApplication.run(BrokerApplication.class, args);
         init();
+        EagleMqTopicModel topicModel = CommonCache.getTopicModel("order_cancel_topic");
+//        List<Thread> threads = new ArrayList<>();
+//        for (int i = 0; i < 10; i++) {
+//            int finalI = i;
+//            Thread thread = new Thread(() -> commitLogAppendHandler.appendMessage(topicModel.getTopic(), ("t-content" + finalI).getBytes()));
+//            threads.add(thread);
+//        }
+//        threads.forEach(Thread::start);
+//        threads.forEach(thread -> {
+//            try {
+//                thread.join();
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//        });
+//        byte[] bytes = commitLogAppendHandler.readMessage(topicModel.getTopic());
+        for(int i = 0;i<= 50000;i++){
+            commitLogAppendHandler.appendMessage("order_cancel_topic", ("t-content" + i).getBytes());
+        }
+        byte[] bytes = commitLogAppendHandler.readMessage("order_cancel_topic");
+        log.info("bytes: {}", new String(bytes));
     }
 }
