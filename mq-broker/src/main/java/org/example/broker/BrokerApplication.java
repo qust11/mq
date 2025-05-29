@@ -62,9 +62,10 @@ public class BrokerApplication {
         String consumeGroup = "order_cancel_consume_group";
 
         for (int i = 0;i < 100;i++){
-            commitLogAppendHandler.appendMessage(topicId, ("t-content" + i).getBytes());
-//            consumeQueueConsumeHandler.consume(topicId, consumeGroup, 0);
-//            consumeQueueConsumeHandler.ack(topicId, consumeGroup, 0);
+//            commitLogAppendHandler.appendMessage(topicId, ("t-content" + i).getBytes());
+            byte[] consume = consumeQueueConsumeHandler.consume(topicId, consumeGroup, 0);
+            log.info("consume: {}", new String(consume));
+            consumeQueueConsumeHandler.ack(topicId, consumeGroup, 0);
         }
 //        EagleMqTopicModel topicModel = CommonCache.getTopicModel();
 //        List<Thread> threads = new ArrayList<>();

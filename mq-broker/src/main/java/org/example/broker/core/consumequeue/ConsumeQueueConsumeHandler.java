@@ -3,6 +3,7 @@ package org.example.broker.core.consumequeue;
 import io.micrometer.common.util.StringUtils;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
+import org.example.broker.core.CommitLogMMapFileMode;
 import org.example.broker.model.consume.ConsumeQueueDetailModel;
 import org.example.broker.model.consume.ConsumeQueueOffsetModel;
 import org.slf4j.Logger;
@@ -40,7 +41,14 @@ public class ConsumeQueueConsumeHandler {
         byte[] bytes = consumeQueueMMapFileMode.readContent(index);
         ConsumeQueueDetailModel consumeQueueDetailModel = ConsumeQueueDetailModel.convertFromBytes(bytes);
         log.info("消费队列数据：topicName = {},consumeGroup = {}, queueId = {}, 信息内容={}", topicName, consumeGroup, queueId, consumeQueueDetailModel);
-        return null;
+
+        CommitLogMMapFileMode messageFileMode = CommonCache.getCommitLogMMapFileModeManager().getMessageFileMode(topicName);
+        if (null == messageFileMode) {
+            log.error("没有找到对应的消费队列 topic = {}", topicName);
+            throw new RuntimeException("没有找到对应的消费队列");
+
+        }
+        return messageFileMode.readContent(consumeQueueDetailModel.getMsgIndex(), consumeQueueDetailModel.getMsgLength());
     }
 
 
