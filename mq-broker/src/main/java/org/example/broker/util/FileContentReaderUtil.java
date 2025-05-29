@@ -1,7 +1,9 @@
 package org.example.broker.util;
 
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.example.broker.model.EagleMqTopicModel;
+import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -32,8 +34,8 @@ public class FileContentReaderUtil {
         return JSONArray.parseArray(content, EagleMqTopicModel.class);
     }
 
-    public static void writeTopicModel(String filePath, List<EagleMqTopicModel> topicModelList){
-        String content = JSONArray.toJSONString(topicModelList);
+
+    public static void writeContent(String filePath, String content){
         try (FileWriter fileWriter = new FileWriter(filePath)) {
                 fileWriter.write(content);
                 fileWriter.flush();

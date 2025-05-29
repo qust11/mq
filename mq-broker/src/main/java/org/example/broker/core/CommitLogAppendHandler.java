@@ -2,18 +2,26 @@ package org.example.broker.core;
 
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.CommitLogMessageModel;
+import org.example.broker.model.EagleMqTopicModel;
+
+import java.util.List;
+
 
 /**
  * @author qushutao
  * @since 2025/5/25-0:07
  */
-@NoArgsConstructor
 @Slf4j
 public class CommitLogAppendHandler {
 
     private MMapFileModeManager messageFileModeManager = new MMapFileModeManager();
+
+    public CommitLogAppendHandler() {
+    }
+
 
 
     public void prepareMMapLoading(String topicName) {

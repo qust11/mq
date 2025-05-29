@@ -11,15 +11,15 @@
         "id": 1,
         "fileName":"000000000",
         "offsetLimit": 1024,
-        "maxOffset": 200,
-        "minOffset": 11
+        "latestOffset": 200,
+        "lastOffset": 11
       },
       {
         "id": 2,
         "fileName":"000000000",
         "offsetLimit": 1024,
-        "maxOffset": 200,
-        "minOffset": 11
+        "latestOffset": 200,
+        "lastOffset": 11
       },
       {
         "id": 3,

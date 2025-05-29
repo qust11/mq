@@ -10,6 +10,10 @@ import org.example.broker.constant.BrokerConstant;
  */
 public class GlobalPropertiesLoader {
 
+    public GlobalPropertiesLoader() {
+        loadProperties();
+    }
+
     public void loadProperties() {
         GlobalProperties globalProperties = new GlobalProperties();
 //        String maHome = System.getenv(BrokerConstant.MQ_HOME);

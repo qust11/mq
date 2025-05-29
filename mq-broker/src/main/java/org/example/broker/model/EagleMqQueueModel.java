@@ -11,9 +11,11 @@ public class EagleMqQueueModel {
 
     private Integer id;
 
-    private Long minOffset;
+    private String fileName;
 
-    private Long maxOffset;
+    private int offsetLimit;
 
-    private Long currentOffset;
+    private int latestOffset;
+
+    private int lastOffset;
 }

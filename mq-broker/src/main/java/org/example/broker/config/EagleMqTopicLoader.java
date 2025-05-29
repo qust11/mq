@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.EagleMqTopicModel;
+import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 import org.example.broker.util.FileContentReaderUtil;
 
 import java.util.ArrayList;
@@ -24,6 +25,10 @@ import java.util.stream.Collectors;
 public class EagleMqTopicLoader {
     private String fileJsonPath;
 
+    public EagleMqTopicLoader() {
+        loadProperties();
+    }
+
     public void loadProperties() {
         GlobalProperties globalProperties = CommonCache.getGlobalProperties();
         String mqHome = globalProperties.getMqHome();
@@ -31,11 +36,13 @@ public class EagleMqTopicLoader {
             throw new IllegalStateException("MQ HOME is empty");
         }
         fileJsonPath = mqHome + BrokerConstant.CONFIG_TOPIC_JSON_PATH;
-
+        // 读取topic配置文件
         List<EagleMqTopicModel> eagleMqTopicModel = FileContentReaderUtil.readTopicModel(fileJsonPath);
         Map<String, EagleMqTopicModel> collect = eagleMqTopicModel.stream().collect(Collectors.toMap(EagleMqTopicModel::getTopic, Function.identity()));
         CommonCache.setTopicModelMap(collect);
-        refreshTopicLatestCommitLog();
+
+        // 刷新
+//        refreshTopicLatestCommitLog();
     }
 
     // 开启刷盘 刷新最新的offset和topic对应的filename
@@ -44,7 +51,8 @@ public class EagleMqTopicLoader {
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             List<EagleMqTopicModel> topicModelList = new ArrayList<>();
             CommonCache.TOPIC_MODEL_MAP.forEach((topicName, eagleMqTopicModel) -> topicModelList.add(eagleMqTopicModel));
-            FileContentReaderUtil.writeTopicModel(fileJsonPath, topicModelList);
+            String content = JSON.toJSONString(topicModelList);
+            FileContentReaderUtil.writeContent(fileJsonPath, content);
             log.info("refreshTopicLatestCommitLog ........ json = {}", JSON.toJSONString(topicModelList));
         }, 0, 3, TimeUnit.SECONDS);
     }

@@ -2,6 +2,7 @@ package org.example.broker.cache;
 
 import org.example.broker.config.GlobalProperties;
 import org.example.broker.model.EagleMqTopicModel;
+import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class CommonCache {
 
     public static Map<String, EagleMqTopicModel> TOPIC_MODEL_MAP = new HashMap<>();
 
+    public static ConsumerQueueOffsetModel CONSUMER_QUEUE_OFFSET_MODEL = new ConsumerQueueOffsetModel();
     public static void setGlobalProperties(GlobalProperties globalProperties) {
         CommonCache.GLOBAL_PROPERTIES = globalProperties;
     }
@@ -46,5 +48,12 @@ public class CommonCache {
 
     public static EagleMqTopicModel getTopicModel(String topicName) {
         return CommonCache.TOPIC_MODEL_MAP.get(topicName);
+    }
+
+    public static ConsumerQueueOffsetModel getConsumerQueueOffsetModel() {
+        return CommonCache.CONSUMER_QUEUE_OFFSET_MODEL;
+    }
+    public static void setConsumerQueueOffsetModel(ConsumerQueueOffsetModel consumerQueueOffsetModel) {
+        CommonCache.CONSUMER_QUEUE_OFFSET_MODEL = consumerQueueOffsetModel;
     }
 }

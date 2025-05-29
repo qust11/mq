@@ -1,4 +1,4 @@
-package org.example.broker.core;
+package org.example.broker.core.consumerqueue;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.CommitLogMessageModel;
-import org.example.broker.model.consumer.ConsumerQueueDetailModel;
 import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.model.TopicLatestCommitLogModel;
+import org.example.broker.model.consumer.ConsumerQueueDetailModel;
 import org.example.broker.util.CommitLogFileNameUtil;
 import org.example.broker.util.MMapUtil;
 
@@ -30,17 +30,22 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 2025/5/25-0:04
  */
 @Slf4j
-public class MMapFileMode {
+public class ConsumerQueueMMapFileMode {
     private MappedByteBuffer mappedByteBuffer;
 
     private FileChannel fileChannel;
 
     private String topicName;
 
+    private int queueId;
+
+    private String fileName;
+
     private Lock lock;
 
-    public void loadFileInMMap(String topicName, int offset, int length) {
-        String filePath = getLatestFilePath(topicName);
+    public void loadFileInMMap(String topicName, int queueId, String fileName, int offset, int length) {
+        this.fileName = fileName;
+        this.queueId = queueId;
 
         try {
             log.info("load file:{}", filePath);
