@@ -6,7 +6,9 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
+import org.example.broker.core.MMapFileMode;
 import org.example.broker.model.CommitLogMessageModel;
+import org.example.broker.model.EagleMqQueueModel;
 import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.model.TopicLatestCommitLogModel;
 import org.example.broker.model.consumer.ConsumerQueueDetailModel;
@@ -21,6 +23,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -56,6 +59,35 @@ public class ConsumerQueueMMapFileMode {
             log.error("load file error", e);
         }
     }
+
+    public String getLatestFilePath() {
+        EagleMqTopicModel topicModel = CommonCache.getTopicModel(topicName);
+        if (topicModel == null) {
+            log.error("topic not exists topicName ={}", topicName);
+            throw new IllegalStateException("topic not exists");
+        }
+
+        List<EagleMqQueueModel> queueInfoList = topicModel.getQueueInfo();
+        EagleMqQueueModel queueModel = queueInfoList.stream().filter(queueInfo -> queueInfo.getId() == queueId).findFirst().orElse(null);
+
+        if (queueModel == null){
+            log.error("queue not exists queueId ={}", queueId);
+            throw new IllegalStateException("queue not exists");
+        }
+
+        long remainLength = queueModel.getOffsetLimit() - queueModel.getLatestOffset();
+        String fileName;
+        if (remainLength <= 0) {
+            log.info("topic's latestCommitLog exists topicName ={}", topicName);
+            MMapFileMode.CommitLogFileInfo newFile = this.createNewFile(topicName, latestCommitLog);
+            fileName = newFile.getFileName();
+        } else {
+            // 还有机会写入文件
+            fileName = latestCommitLog.getFileName();
+        }
+        return CommitLogFileNameUtil.buildCommitLogFileName(topicName, fileName);
+    }
+
 
     private void doMMap(String filePath, int offset, int length) throws IOException {
         File file = new File(filePath);

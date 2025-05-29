@@ -77,7 +77,6 @@ public class MMapFileMode {
             fileName = latestCommitLog.getFileName();
         }
         return CommitLogFileNameUtil.buildCommitLogFileName(topicName, fileName);
-
     }
 
     private CommitLogFileInfo createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
