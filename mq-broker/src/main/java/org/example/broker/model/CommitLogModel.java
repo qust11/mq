@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 2025/5/25-20:45
  */
 @Data
-public class TopicLatestCommitLogModel {
+public class CommitLogModel {
 
     // 文件名
     private String fileName;

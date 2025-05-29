@@ -1,11 +1,7 @@
-package org.example.broker.core.consumerqueue;
+package org.example.broker.core.consumequeue;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
-import org.example.broker.core.MMapFileMode;
-import org.example.broker.core.MMapFileModeManager;
-import org.example.broker.model.CommitLogMessageModel;
 import org.example.broker.model.EagleMqQueueModel;
 import org.example.broker.model.EagleMqTopicModel;
 
@@ -18,28 +14,29 @@ import java.util.List;
  * @since 2025/5/25-0:07
  */
 @Slf4j
-public class ConsumerQueueAppendHandler {
+public class ConsumeQueueAppendHandler {
 
 
-    public void prepareConsumerQueueMMapLoading(String topicName) {
+    public void prepareConsumeQueueMMapLoading(String topicName) {
 
         EagleMqTopicModel eagleMqTopicModel = CommonCache.getTopicModel(topicName);
         if (eagleMqTopicModel == null) {
             log.error("topic not exists topicName ={}", topicName);
             return;
         }
-        List<ConsumerQueueMMapFileMode> consumerQueueMMapFileModes = new ArrayList<>();
+        List<ConsumeQueueMMapFileMode> consumeQueueMMapFileModes = new ArrayList<>();
         List<EagleMqQueueModel> queueInfo = eagleMqTopicModel.getQueueInfo();
         for (EagleMqQueueModel queueModel : queueInfo) {
-            ConsumerQueueMMapFileMode consumerQueueMMapFileMode = new ConsumerQueueMMapFileMode();
-            consumerQueueMMapFileMode.loadFileInMMap(topicName,
+            ConsumeQueueMMapFileMode consumeQueueMMapFileMode = new ConsumeQueueMMapFileMode();
+            consumeQueueMMapFileMode.loadFileInMMap(topicName,
                     queueModel.getId(),
                     queueModel.getFileName(),
+                    queueModel.getLastOffset(),
                     queueModel.getLatestOffset().get(),
                     queueModel.getOffsetLimit());
-            consumerQueueMMapFileModes.add(consumerQueueMMapFileMode);
+            consumeQueueMMapFileModes.add(consumeQueueMMapFileMode);
         }
-        CommonCache.getConsumerQueueMMapFileModeManager().putMessageFileMode(topicName, consumerQueueMMapFileModes);
+        CommonCache.getConsumeQueueMMapFileModeManager().putMessageFileMode(topicName, consumeQueueMMapFileModes);
     }
 
 //

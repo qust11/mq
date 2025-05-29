@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.EagleMqTopicModel;
-import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 import org.example.broker.util.FileContentReaderUtil;
 
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ public class EagleMqTopicLoader {
         CommonCache.setTopicModelMap(collect);
 
         // 刷新
-//        refreshTopicLatestCommitLog();
+        refreshTopicLatestCommitLog();
     }
 
     // 开启刷盘 刷新最新的offset和topic对应的filename
@@ -54,6 +53,6 @@ public class EagleMqTopicLoader {
             String content = JSON.toJSONString(topicModelList);
             FileContentReaderUtil.writeContent(fileJsonPath, content);
             log.info("refreshTopicLatestCommitLog ........ json = {}", JSON.toJSONString(topicModelList));
-        }, 0, 3, TimeUnit.SECONDS);
+        }, 5, 20, TimeUnit.SECONDS);
     }
 }

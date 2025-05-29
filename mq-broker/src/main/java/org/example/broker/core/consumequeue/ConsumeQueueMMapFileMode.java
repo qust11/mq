@@ -1,13 +1,13 @@
-package org.example.broker.core.consumerqueue;
+package org.example.broker.core.consumequeue;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
-import org.example.broker.model.CommitLogMessageModel;
 import org.example.broker.model.EagleMqQueueModel;
 import org.example.broker.model.EagleMqTopicModel;
-import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
+import org.example.broker.model.consume.ConsumeQueueDetailModel;
+import org.example.broker.util.ByteConvertUtil;
 import org.example.broker.util.FileNameUtil;
 
 import java.io.File;
@@ -28,9 +28,11 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Slf4j
 @Data
-public class ConsumerQueueMMapFileMode {
+public class ConsumeQueueMMapFileMode {
 
     private MappedByteBuffer mappedByteBuffer;
+
+    private ByteBuffer readBuffer;
 
     private FileChannel fileChannel;
 
@@ -42,16 +44,18 @@ public class ConsumerQueueMMapFileMode {
 
     private Lock lock;
 
-    public void loadFileInMMap(String topicName, int queueId, String fileName, int offset, int length) {
+    private static final int size = 12;
+
+
+    public void loadFileInMMap(String topicName, int queueId, String fileName, int startOffset, int offset, int length) {
         this.fileName = fileName;
         this.queueId = queueId;
-
+        this.topicName = topicName;
+        this.lock = new ReentrantLock();
         try {
             String filePath = getLatestFilePath();
             log.info("load file:{}", filePath);
-            doMMap(filePath, offset, length);
-            this.topicName = topicName;
-            this.lock = new ReentrantLock();
+            doMMap(filePath, startOffset, offset, length);
         } catch (IOException e) {
             log.error("load file error", e);
         }
@@ -68,7 +72,7 @@ public class ConsumerQueueMMapFileMode {
             // 还有机会写入文件
             fileName = queueModel.getFileName();
         }
-        return FileNameUtil.buildConsumerQueueName(topicName, queueId, fileName);
+        return FileNameUtil.buildConsumeQueueName(topicName, queueId, fileName);
     }
 
     private EagleMqQueueModel getEagleMqQueueModel() {
@@ -88,20 +92,22 @@ public class ConsumerQueueMMapFileMode {
     }
 
 
-    private void doMMap(String filePath, int offset, int length) throws IOException {
+    private void doMMap(String filePath, int startOffset, int offset, int length) throws IOException {
         File file = new File(filePath);
         if (!file.exists()) {
             throw new FileNotFoundException("file not exists");
         }
         try (FileChannel ignored = this.fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
-            this.mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, offset, length);
+            this.mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, startOffset, length);
+            this.readBuffer = mappedByteBuffer.slice();
+            this.mappedByteBuffer.position(offset);
         }
     }
 
 
     private String createNewFile() {
-        String newFileName = FileNameUtil.incConsumerQueueFileName(fileName);
-        String newFilePath = FileNameUtil.buildConsumerQueueName(topicName, queueId, newFileName);
+        String newFileName = FileNameUtil.incConsumeQueueFileName(fileName);
+        String newFilePath = FileNameUtil.buildConsumeQueueName(topicName, queueId, newFileName);
         try {
             File newFile = new File(newFilePath);
             newFile.createNewFile();
@@ -113,25 +119,25 @@ public class ConsumerQueueMMapFileMode {
         return newFileName;
     }
 
-    public byte[] readContent(int offset, int size) {
-        mappedByteBuffer.position(offset);
+    public byte[] readContent(int offset) {
+        ByteBuffer currentBuffer = readBuffer.slice();
+        currentBuffer.position(offset);
         byte[] bytes = new byte[size];
-        int j = 0;
-        for (int i = 0; i < size; i++) {
-            bytes[j++] = mappedByteBuffer.get(offset + i);
-        }
+        currentBuffer.get(bytes);
         return bytes;
     }
+
 
     public void writeContent(byte[] bytes, boolean force) {
         try {
             lock.lock();
             EagleMqQueueModel eagleMqQueueModel = getEagleMqQueueModel();
             // 校验是否可以当前写入文件有空闲空间
-            checkConsumerQueueHasEnableSpace(bytes);
-
+            checkConsumeQueueHasEnableSpace(bytes);
             mappedByteBuffer.put(bytes);
             eagleMqQueueModel.getLatestOffset().addAndGet(bytes.length);
+            log.info("写入consumerqueue消息 topic = {}, consumeQueueDetailBytes = {}", topicName, ConsumeQueueDetailModel.convertFromBytes(bytes));
+
             if (force) {
                 mappedByteBuffer.force();
             }
@@ -141,7 +147,7 @@ public class ConsumerQueueMMapFileMode {
     }
 
 
-    private void checkConsumerQueueHasEnableSpace(byte [] bytes) {
+    private void checkConsumeQueueHasEnableSpace(byte[] bytes) {
         EagleMqQueueModel eagleMqQueueModel = getEagleMqQueueModel();
 
         long remainLength = eagleMqQueueModel.getOffsetLimit() - eagleMqQueueModel.getLatestOffset().get();
@@ -153,9 +159,9 @@ public class ConsumerQueueMMapFileMode {
             eagleMqQueueModel.getLatestOffset().set(0);
             eagleMqQueueModel.setOffsetLimit(BrokerConstant.COMMIT_LOG_FILE_SIZE);
 
-            String filePath = FileNameUtil.buildConsumerQueueName(topicName, queueId, fileName);
+            String filePath = FileNameUtil.buildConsumeQueueName(topicName, queueId, fileName);
             try {
-                doMMap(filePath, 0, BrokerConstant.COMMIT_LOG_FILE_SIZE);
+                doMMap(filePath, 0, 0, BrokerConstant.COMMIT_LOG_FILE_SIZE);
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }

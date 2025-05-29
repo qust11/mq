@@ -15,7 +15,7 @@ public class EagleMqTopicModel {
     private String topic;
 
     // 当前主题的最新的文件信息
-    private TopicLatestCommitLogModel latestCommitLog;
+    private CommitLogModel commitLogModel;
 
     // topic的队列信息
     private List<EagleMqQueueModel> queueInfo;

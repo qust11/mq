@@ -1,9 +1,10 @@
 package org.example.broker.cache;
 
 import org.example.broker.config.GlobalProperties;
-import org.example.broker.core.consumerqueue.ConsumerQueueMMapFileModeManager;
+import org.example.broker.core.CommitLogMMapFileModeManager;
+import org.example.broker.core.consumequeue.ConsumeQueueMMapFileModeManager;
 import org.example.broker.model.EagleMqTopicModel;
-import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
+import org.example.broker.model.consume.ConsumeQueueOffsetModel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,8 +19,9 @@ public class CommonCache {
 
     public static GlobalProperties GLOBAL_PROPERTIES = new GlobalProperties();
     public static Map<String, EagleMqTopicModel> TOPIC_MODEL_MAP = new HashMap<>();
-    public static ConsumerQueueOffsetModel CONSUMER_QUEUE_OFFSET_MODEL = new ConsumerQueueOffsetModel();
-    public static ConsumerQueueMMapFileModeManager CONSUMER_QUEUE_MMAP_FILE_MODE_MANAGER = new ConsumerQueueMMapFileModeManager();
+    public static ConsumeQueueOffsetModel CONSUME_QUEUE_OFFSET_MODEL = new ConsumeQueueOffsetModel();
+    public static ConsumeQueueMMapFileModeManager CONSUME_QUEUE_MMAP_FILE_MODE_MANAGER = new ConsumeQueueMMapFileModeManager();
+    public static CommitLogMMapFileModeManager COMMIT_LOG_MMAP_FILE_MODE_MANAGER = new CommitLogMMapFileModeManager();
 
     public static void setGlobalProperties(GlobalProperties globalProperties) {
         CommonCache.GLOBAL_PROPERTIES = globalProperties;
@@ -50,20 +52,28 @@ public class CommonCache {
         return CommonCache.TOPIC_MODEL_MAP.get(topicName);
     }
 
-    public static ConsumerQueueOffsetModel getConsumerQueueOffsetModel() {
-        return CommonCache.CONSUMER_QUEUE_OFFSET_MODEL;
+    public static ConsumeQueueOffsetModel getConsumeQueueOffsetModel() {
+        return CommonCache.CONSUME_QUEUE_OFFSET_MODEL;
     }
 
 
-    public static void setConsumerQueueOffsetModel(ConsumerQueueOffsetModel consumerQueueOffsetModel) {
-        CommonCache.CONSUMER_QUEUE_OFFSET_MODEL = consumerQueueOffsetModel;
+    public static void setConsumeQueueOffsetModel(ConsumeQueueOffsetModel consumeQueueOffsetModel) {
+        CommonCache.CONSUME_QUEUE_OFFSET_MODEL = consumeQueueOffsetModel;
     }
 
-    public static ConsumerQueueMMapFileModeManager getConsumerQueueMMapFileModeManager() {
-        return CommonCache.CONSUMER_QUEUE_MMAP_FILE_MODE_MANAGER;
+    public static ConsumeQueueMMapFileModeManager getConsumeQueueMMapFileModeManager() {
+        return CommonCache.CONSUME_QUEUE_MMAP_FILE_MODE_MANAGER;
     }
 
-    public static void setConsumerQueueMMapFileModeManager(ConsumerQueueMMapFileModeManager consumerQueueMMapFileModeManager) {
-        CommonCache.CONSUMER_QUEUE_MMAP_FILE_MODE_MANAGER = consumerQueueMMapFileModeManager;
+    public static void setConsumeQueueMMapFileModeManager(ConsumeQueueMMapFileModeManager consumeQueueMMapFileModeManager) {
+        CommonCache.CONSUME_QUEUE_MMAP_FILE_MODE_MANAGER = consumeQueueMMapFileModeManager;
+    }
+
+    public static CommitLogMMapFileModeManager getCommitLogMMapFileModeManager() {
+        return CommonCache.COMMIT_LOG_MMAP_FILE_MODE_MANAGER;
+    }
+
+    public static void setCommitLogMMapFileModeManager(CommitLogMMapFileModeManager messageFileModeManager) {
+        CommonCache.COMMIT_LOG_MMAP_FILE_MODE_MANAGER = messageFileModeManager;
     }
 }

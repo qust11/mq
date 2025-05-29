@@ -6,11 +6,11 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
-import org.example.broker.core.consumerqueue.ConsumerQueueMMapFileMode;
+import org.example.broker.core.consumequeue.ConsumeQueueMMapFileMode;
 import org.example.broker.model.CommitLogMessageModel;
-import org.example.broker.model.consumer.ConsumerQueueDetailModel;
+import org.example.broker.model.consume.ConsumeQueueDetailModel;
 import org.example.broker.model.EagleMqTopicModel;
-import org.example.broker.model.TopicLatestCommitLogModel;
+import org.example.broker.model.CommitLogModel;
 import org.example.broker.util.FileNameUtil;
 import org.example.broker.util.MMapUtil;
 
@@ -32,8 +32,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 2025/5/25-0:04
  */
 @Slf4j
-public class MMapFileMode {
+public class CommitLogMMapFileMode {
     private MappedByteBuffer mappedByteBuffer;
+    private ByteBuffer readBuffer;
 
     private FileChannel fileChannel;
 
@@ -61,12 +62,13 @@ public class MMapFileMode {
         }
         try (FileChannel ignored = this.fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             this.mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, offset, length);
+            this.readBuffer = mappedByteBuffer.slice();
         }
 
     }
 
     public String getLatestFilePath(String topicName) {
-        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
+        CommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
 
         long remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset().get();
         String fileName;
@@ -81,7 +83,7 @@ public class MMapFileMode {
         return FileNameUtil.buildCommitLogFileName(topicName, fileName);
     }
 
-    private CommitLogFileInfo createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
+    private CommitLogFileInfo createNewFile(String topicName, CommitLogModel latestCommitLog) {
         String newFileName = FileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
         String newFilePath = FileNameUtil.buildCommitLogFileName(topicName, newFileName);
         try {
@@ -97,18 +99,19 @@ public class MMapFileMode {
         return new CommitLogFileInfo(newFileName, newFilePath);
     }
 
-    public byte[] readContent(int offset, int size) {
-        mappedByteBuffer.position(offset);
-        byte[] bytes = new byte[size];
+    public byte[] readContent(int pos, int length) {
+        ByteBuffer currentBuffer = readBuffer.slice();
+        currentBuffer.position(pos);
+        byte[] bytes = new byte[length];
         int j = 0;
-        for (int i = 0; i < size; i++) {
-            bytes[j++] = mappedByteBuffer.get(offset + i);
+        for (int i = 0; i < length; i++) {
+            bytes[j++] = currentBuffer.get(length + i);
         }
         return bytes;
     }
 
     public void writeContent(CommitLogMessageModel commitLogMessageModel, boolean force) {
-        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
+        CommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
         try {
             lock.lock();
             // 校验是否可以当前写入文件有空闲空间
@@ -116,6 +119,8 @@ public class MMapFileMode {
 
             byte[] bytes = commitLogMessageModel.getBytes();
             mappedByteBuffer.put(bytes);
+            log.info("写入commitLog消息 topic={}, message={}：consumeQueueDetailBytes:{}", topicName, new String(bytes));
+
             int sourceIndex = latestCommitLog.getOffset().get();
             latestCommitLog.getOffset().addAndGet(bytes.length);
             this.dispatcher(bytes, sourceIndex);
@@ -128,32 +133,32 @@ public class MMapFileMode {
     }
 
     private void dispatcher(byte[] bytes, int msgIndex) {
-        TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
-        String fileName = latestCommitLog.getFileName();
-
+        EagleMqTopicModel eagleMqTopicModel = CommonCache.getTopicModel(topicName);
         // todo
         int queueId = 0;
-        ConsumerQueueDetailModel consumerQueueDetailModel = new ConsumerQueueDetailModel();
-        consumerQueueDetailModel.setCommitLogFileName(Integer.parseInt(fileName));
-        consumerQueueDetailModel.setMsgIndex(msgIndex);
-        consumerQueueDetailModel.setMsgLength(bytes.length);
-        byte[] consumerQueueDetailBytes = consumerQueueDetailModel.convertToBytes();
-        List<ConsumerQueueMMapFileMode> messageFileModes = CommonCache.getConsumerQueueMMapFileModeManager().getMessageFileMode(topicName);
-        ConsumerQueueMMapFileMode consumerQueueMMapFileMode = messageFileModes.stream().filter(item -> item.getTopicName().equals(topicName) && item.getQueueId() == queueId).findFirst().orElse(null);
-        if (consumerQueueMMapFileMode == null) {
-            log.error("topic's consumerQueueMMapFileMode not exists topicName ={}, queueId = {}", topicName, queueId);
-            throw new IllegalStateException("topic's consumerQueueMMapFileMode not exists");
+        ConsumeQueueDetailModel consumeQueueDetailModel = new ConsumeQueueDetailModel();
+        consumeQueueDetailModel.setFileName(Integer.parseInt(eagleMqTopicModel.getCommitLogModel().getFileName()));
+        consumeQueueDetailModel.setMsgIndex(msgIndex);
+        consumeQueueDetailModel.setMsgLength(bytes.length);
+        byte[] consumeQueueDetailBytes = consumeQueueDetailModel.convertToBytes();
+        List<ConsumeQueueMMapFileMode> messageFileModes = CommonCache.getConsumeQueueMMapFileModeManager().getMessageFileMode(topicName);
+        ConsumeQueueMMapFileMode consumeQueueMMapFileMode = messageFileModes.stream().filter(item -> item.getTopicName().equals(topicName) && item.getQueueId() == queueId).findFirst().orElse(null);
+        if (consumeQueueMMapFileMode == null) {
+            log.error("topic's consumeQueueMMapFileMode not exists topicName ={}, queueId = {}", topicName, queueId);
+            throw new IllegalStateException("topic's consumeQueueMMapFileMode not exists");
         }
-        consumerQueueMMapFileMode.writeContent(consumerQueueDetailBytes, true);
+        consumeQueueMMapFileMode.writeContent(consumeQueueDetailBytes, true);
+
+
     }
 
-    private TopicLatestCommitLogModel getTopicLatestCommitLogModel(String topicName) {
+    private CommitLogModel getTopicLatestCommitLogModel(String topicName) {
         EagleMqTopicModel topicModel = CommonCache.getTopicModel(topicName);
         if (topicModel == null) {
             log.error("topic not exists topicName ={}", topicName);
             throw new IllegalStateException("topic not exists");
         }
-        TopicLatestCommitLogModel latestCommitLog = topicModel.getLatestCommitLog();
+        CommitLogModel latestCommitLog = topicModel.getCommitLogModel();
         if (latestCommitLog == null) {
             log.error("topic's latestCommitLog not exists topicName ={}", topicName);
             throw new IllegalStateException("topic's latestCommitLog not exists");
@@ -164,7 +169,7 @@ public class MMapFileMode {
     private void checkCommitLogHasEnableSpace(CommitLogMessageModel commitLogMessageModel) {
 
         EagleMqTopicModel topicModel = CommonCache.getTopicModel(topicName);
-        TopicLatestCommitLogModel latestCommitLog = topicModel.getLatestCommitLog();
+        CommitLogModel latestCommitLog = topicModel.getCommitLogModel();
 
         long remainLength = latestCommitLog.getOffsetLimit() - latestCommitLog.getOffset().get();
 

@@ -13,7 +13,7 @@ public class FileNameUtil {
         return BrokerConstant.FIRST_LOG_FILE_NAME;
     }
 
-    public static String incConsumerQueueFileName(String oldName) {
+    public static String incConsumeQueueFileName(String oldName) {
         return incCommitLogFileName(oldName);
     }
     public static String incCommitLogFileName(String oldName) {
@@ -30,11 +30,10 @@ public class FileNameUtil {
                 topicName + "\\" + fileName;
     }
 
-    public static String buildConsumerQueueName(String topicName,Integer queueId, String fileName) {
-        String storePath = BrokerConstant.BASIC_CONSUMERQUEUE_PATH + topicName + "/" + queueId + "/";
+    public static String buildConsumeQueueName(String topicName,Integer queueId, String fileName) {
+        String storePath = BrokerConstant.BASIC_CONSUMEQUEUE_PATH + topicName + "\\" + queueId + "\\";
         return CommonCache.getGlobalProperties().getMqHome() +
-                storePath +
-                topicName + "\\" + fileName;
+                storePath  + fileName;
     }
 
 

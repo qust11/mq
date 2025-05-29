@@ -1,13 +1,9 @@
 package org.example.broker.core;
 
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.CommitLogMessageModel;
-import org.example.broker.model.EagleMqTopicModel;
-
-import java.util.List;
 
 
 /**
@@ -17,22 +13,16 @@ import java.util.List;
 @Slf4j
 public class CommitLogAppendHandler {
 
-    private MMapFileModeManager messageFileModeManager = new MMapFileModeManager();
-
-    public CommitLogAppendHandler() {
-
-    }
-
 
     public void prepareMMapLoading(String topicName) {
-        MMapFileMode messageFileMode = new MMapFileMode();
+        CommitLogMMapFileMode messageFileMode = new CommitLogMMapFileMode();
         messageFileMode.loadFileInMMap(topicName, 0, BrokerConstant.COMMIT_LOG_FILE_SIZE);
-        messageFileModeManager.putMessageFileMode(topicName, messageFileMode);
+        CommonCache.getCommitLogMMapFileModeManager().putMessageFileMode(topicName, messageFileMode);
     }
 
     public void appendMessage(String topic, byte[] bytes) {
         log.info("topic name = {} ， ***** data = {}", topic, new String(bytes));
-        MMapFileMode messageFileMode = messageFileModeManager.getMessageFileMode(topic);
+        CommitLogMMapFileMode messageFileMode = CommonCache.getCommitLogMMapFileModeManager().getMessageFileMode(topic);
         if (null == messageFileMode) {
             throw new RuntimeException("messageFileMode is null");
         }
@@ -42,7 +32,7 @@ public class CommitLogAppendHandler {
     }
 
     public byte[] readMessage(String topic) {
-        MMapFileMode messageFileMode = messageFileModeManager.getMessageFileMode(topic);
+        CommitLogMMapFileMode messageFileMode = CommonCache.getCommitLogMMapFileModeManager().getMessageFileMode(topic);
         if (null == messageFileMode) {
             throw new RuntimeException("messageFileMode is null");
         }

@@ -23,4 +23,13 @@ public class ByteConvertUtil {
         return value;
     }
 
+
+    public static byte[] getByteArray(byte[] bytes , int pos, int length) {
+        byte[] src = new byte[length];
+        for (int i = 0; i < length; i++) {
+            src[i] = bytes[pos + i];
+        }
+        return src;
+    }
+
 }

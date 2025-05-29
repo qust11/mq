@@ -1,9 +1,7 @@
 package org.example.broker.util;
 
 import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
 import org.example.broker.model.EagleMqTopicModel;
-import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
