@@ -7,6 +7,7 @@ import org.example.broker.config.EagleMqTopicLoader;
 import org.example.broker.config.GlobalPropertiesLoader;
 import org.example.broker.core.CommitLogAppendHandler;
 import org.example.broker.core.consumerqueue.ConsumerQueueAppendHandler;
+import org.example.broker.core.consumerqueue.ConsumerQueueMMapFileModeManager;
 import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.model.consumer.ConsumerQueueOffsetModel;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,7 +29,9 @@ public class BrokerApplication {
     private static GlobalPropertiesLoader globalPropertiesLoader;
     private static EagleMqTopicLoader eagleMqTopicLoader;
     private static CommitLogAppendHandler commitLogAppendHandler;
-    private static  ConsumerQueueLoader consumerQueueLoader;
+    private static ConsumerQueueLoader consumerQueueLoader;
+    private static ConsumerQueueAppendHandler consumerQueueAppendHandler;
+    private static ConsumerQueueMMapFileModeManager consumerQueueMMapFileModeManager;
 
     private static void init() {
         // 加载全局配置信息
@@ -40,9 +43,12 @@ public class BrokerApplication {
         // 初始化消息队列文件 并进行文件映射
         commitLogAppendHandler = new CommitLogAppendHandler();
 
-        ConsumerQueueAppendHandler consumerQueueAppendHandler = new ConsumerQueueAppendHandler();
+        consumerQueueAppendHandler = new ConsumerQueueAppendHandler();
 
         consumerQueueLoader = new ConsumerQueueLoader();
+
+        consumerQueueMMapFileModeManager = new ConsumerQueueMMapFileModeManager();
+
 
         List<EagleMqTopicModel> eagleMqTopicModelList = CommonCache.getTopicModelList();
         for (EagleMqTopicModel eagleMqTopicModel : eagleMqTopicModelList) {

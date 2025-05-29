@@ -46,6 +46,9 @@ public class ConsumerQueueLoader {
         Executors.newScheduledThreadPool(1)
                 .scheduleAtFixedRate(() -> {
                     ConsumerQueueOffsetModel consumerQueueOffsetModel = CommonCache.getConsumerQueueOffsetModel();
+                    if (consumerQueueOffsetModel == null){
+                        return;
+                    }
 //                    ConsumerQueueOffsetModel consumerQueueOffsetModel = getConsumerQueueOffsetModel();
                     String jsonString = JSONObject.toJSONString(consumerQueueOffsetModel);
                     log.info("refreshConsumer ........ json = {}", jsonString);

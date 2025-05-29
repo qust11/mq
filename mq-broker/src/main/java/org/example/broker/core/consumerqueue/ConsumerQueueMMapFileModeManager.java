@@ -1,5 +1,6 @@
 package org.example.broker.core.consumerqueue;
 
+import org.example.broker.cache.CommonCache;
 import org.example.broker.core.MMapFileMode;
 
 import java.util.HashMap;
@@ -11,6 +12,10 @@ import java.util.Map;
  * @since 2025/5/25-0:04
  */
 public class ConsumerQueueMMapFileModeManager {
+
+    public ConsumerQueueMMapFileModeManager() {
+        CommonCache.setConsumerQueueMMapFileModeManager(this);
+    }
 
     private static Map<String, List<ConsumerQueueMMapFileMode>> consumerQueueMMapFileModeMap = new HashMap<>();
 

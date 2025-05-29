@@ -20,11 +20,11 @@ import java.util.List;
 @Slf4j
 public class ConsumerQueueAppendHandler {
 
-    private ConsumerQueueMMapFileModeManager consumerQueueMMapFileModeManager = new ConsumerQueueMMapFileModeManager();
 
     public void prepareConsumerQueueMMapLoading(String topicName) {
+
         EagleMqTopicModel eagleMqTopicModel = CommonCache.getTopicModel(topicName);
-        if (eagleMqTopicModel == null){
+        if (eagleMqTopicModel == null) {
             log.error("topic not exists topicName ={}", topicName);
             return;
         }
@@ -35,11 +35,11 @@ public class ConsumerQueueAppendHandler {
             consumerQueueMMapFileMode.loadFileInMMap(topicName,
                     queueModel.getId(),
                     queueModel.getFileName(),
-                    queueModel.getLatestOffset(),
+                    queueModel.getLatestOffset().get(),
                     queueModel.getOffsetLimit());
             consumerQueueMMapFileModes.add(consumerQueueMMapFileMode);
         }
-        consumerQueueMMapFileModeManager.putMessageFileMode(topicName, consumerQueueMMapFileModes);
+        CommonCache.getConsumerQueueMMapFileModeManager().putMessageFileMode(topicName, consumerQueueMMapFileModes);
     }
 
 //

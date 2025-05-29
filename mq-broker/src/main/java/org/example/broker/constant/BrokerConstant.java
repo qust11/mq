@@ -7,9 +7,12 @@ package org.example.broker.constant;
 public class BrokerConstant {
 
 //    public static final String MQ_HOME = "E:\\developeCode\\java\\bastmq";
-    public static final String MQ_HOME = "E:\\code\\java\\bastmq";
+//    public static final String MQ_HOME = "E:\\code\\java\\bastmq";
+    public static final String MQ_HOME = "\\bastmq";
 
-    public static final String BASIC_STORE_PATH = "/broker/store/";
+
+    public static final String BASIC_COMMITLOG_PATH = "/broker/store/";
+    public static final String BASIC_CONSUMERQUEUE_PATH = "/broker/consumerqueue/";
 
     public static final String CONFIG_TOPIC_JSON_PATH = "/broker/config/mq_topic.json";
 

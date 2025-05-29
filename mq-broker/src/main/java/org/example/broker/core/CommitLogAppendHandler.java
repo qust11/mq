@@ -20,8 +20,8 @@ public class CommitLogAppendHandler {
     private MMapFileModeManager messageFileModeManager = new MMapFileModeManager();
 
     public CommitLogAppendHandler() {
-    }
 
+    }
 
 
     public void prepareMMapLoading(String topicName) {

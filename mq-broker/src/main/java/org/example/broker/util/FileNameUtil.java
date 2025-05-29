@@ -7,12 +7,15 @@ import org.example.broker.constant.BrokerConstant;
  * @author qushutao
  * @since 2025/5/25-23:13
  */
-public class CommitLogFileNameUtil {
+public class FileNameUtil {
 
     public static String buildFirstLogFileName() {
         return BrokerConstant.FIRST_LOG_FILE_NAME;
     }
 
+    public static String incConsumerQueueFileName(String oldName) {
+        return incCommitLogFileName(oldName);
+    }
     public static String incCommitLogFileName(String oldName) {
         if (oldName.length() != 8) {
             throw new IllegalStateException("file name is invalid,fileName is not digits");
@@ -21,11 +24,19 @@ public class CommitLogFileNameUtil {
         return completionFileName(fileName + 1);
     }
 
-    public static String buildCommitLogFileName(String topicName, String newFileName) {
+    public static String buildCommitLogFileName(String topicName, String fileName) {
         return CommonCache.getGlobalProperties().getMqHome() +
-                BrokerConstant.BASIC_STORE_PATH +
-                topicName + "\\" + newFileName;
+                BrokerConstant.BASIC_COMMITLOG_PATH +
+                topicName + "\\" + fileName;
     }
+
+    public static String buildConsumerQueueName(String topicName,Integer queueId, String fileName) {
+        String storePath = BrokerConstant.BASIC_CONSUMERQUEUE_PATH + topicName + "/" + queueId + "/";
+        return CommonCache.getGlobalProperties().getMqHome() +
+                storePath +
+                topicName + "\\" + fileName;
+    }
+
 
     public static String completionFileName(int fileName) {
         return String.format("%08d", fileName);

@@ -6,11 +6,12 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
+import org.example.broker.core.consumerqueue.ConsumerQueueMMapFileMode;
 import org.example.broker.model.CommitLogMessageModel;
 import org.example.broker.model.consumer.ConsumerQueueDetailModel;
 import org.example.broker.model.EagleMqTopicModel;
 import org.example.broker.model.TopicLatestCommitLogModel;
-import org.example.broker.util.CommitLogFileNameUtil;
+import org.example.broker.util.FileNameUtil;
 import org.example.broker.util.MMapUtil;
 
 import java.io.File;
@@ -21,6 +22,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -76,12 +78,12 @@ public class MMapFileMode {
             // 还有机会写入文件
             fileName = latestCommitLog.getFileName();
         }
-        return CommitLogFileNameUtil.buildCommitLogFileName(topicName, fileName);
+        return FileNameUtil.buildCommitLogFileName(topicName, fileName);
     }
 
     private CommitLogFileInfo createNewFile(String topicName, TopicLatestCommitLogModel latestCommitLog) {
-        String newFileName = CommitLogFileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
-        String newFilePath = CommitLogFileNameUtil.buildCommitLogFileName(topicName, newFileName);
+        String newFileName = FileNameUtil.incCommitLogFileName(latestCommitLog.getFileName());
+        String newFilePath = FileNameUtil.buildCommitLogFileName(topicName, newFileName);
         try {
             File newFile = new File(newFilePath);
             newFile.createNewFile();
@@ -129,11 +131,20 @@ public class MMapFileMode {
         TopicLatestCommitLogModel latestCommitLog = getTopicLatestCommitLogModel(topicName);
         String fileName = latestCommitLog.getFileName();
 
+        // todo
+        int queueId = 0;
         ConsumerQueueDetailModel consumerQueueDetailModel = new ConsumerQueueDetailModel();
         consumerQueueDetailModel.setCommitLogFileName(Integer.parseInt(fileName));
         consumerQueueDetailModel.setMsgIndex(msgIndex);
         consumerQueueDetailModel.setMsgLength(bytes.length);
-
+        byte[] consumerQueueDetailBytes = consumerQueueDetailModel.convertToBytes();
+        List<ConsumerQueueMMapFileMode> messageFileModes = CommonCache.getConsumerQueueMMapFileModeManager().getMessageFileMode(topicName);
+        ConsumerQueueMMapFileMode consumerQueueMMapFileMode = messageFileModes.stream().filter(item -> item.getTopicName().equals(topicName) && item.getQueueId() == queueId).findFirst().orElse(null);
+        if (consumerQueueMMapFileMode == null) {
+            log.error("topic's consumerQueueMMapFileMode not exists topicName ={}, queueId = {}", topicName, queueId);
+            throw new IllegalStateException("topic's consumerQueueMMapFileMode not exists");
+        }
+        consumerQueueMMapFileMode.writeContent(consumerQueueDetailBytes, true);
     }
 
     private TopicLatestCommitLogModel getTopicLatestCommitLogModel(String topicName) {
