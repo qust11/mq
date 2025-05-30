@@ -52,7 +52,7 @@ public class ConsumeQueueLoader {
                     String jsonString = JSONObject.toJSONString(consumeQueueOffsetModel);
                     log.info("refreshConsume ........ json = {}", jsonString);
                     FileContentReaderUtil.writeContent(filePath, jsonString);
-                }, 5, 20, TimeUnit.SECONDS);
+                }, 3, 3, TimeUnit.SECONDS);
     }
 
     public static ConsumeQueueOffsetModel getConsumeQueueOffsetModel() {

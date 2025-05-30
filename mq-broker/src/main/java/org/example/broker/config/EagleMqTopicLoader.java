@@ -53,6 +53,6 @@ public class EagleMqTopicLoader {
             String content = JSON.toJSONString(topicModelList);
             FileContentReaderUtil.writeContent(fileJsonPath, content);
             log.info("refreshTopicLatestCommitLog ........ json = {}", JSON.toJSONString(topicModelList));
-        }, 5, 20, TimeUnit.SECONDS);
+        }, 3, 3, TimeUnit.SECONDS);
     }
 }

@@ -4,8 +4,10 @@ import io.micrometer.common.util.StringUtils;
 import org.example.broker.cache.CommonCache;
 import org.example.broker.constant.BrokerConstant;
 import org.example.broker.core.CommitLogMMapFileMode;
+import org.example.broker.model.EagleMqQueueModel;
 import org.example.broker.model.consume.ConsumeQueueDetailModel;
 import org.example.broker.model.consume.ConsumeQueueOffsetModel;
+import org.example.broker.util.FileNameUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +40,10 @@ public class ConsumeQueueConsumeHandler {
         if (null == consumeQueueMMapFileMode) {
             throw new RuntimeException("没有找到对应的消费队列");
         }
+        boolean readable = isReadable(index, topicName, queueId);
+        if (!readable){
+            return new byte[0];
+        }
         byte[] bytes = consumeQueueMMapFileMode.readContent(index);
         ConsumeQueueDetailModel consumeQueueDetailModel = ConsumeQueueDetailModel.convertFromBytes(bytes);
         log.info("消费队列数据：topicName = {},consumeGroup = {}, queueId = {}, 信息内容={}", topicName, consumeGroup, queueId, consumeQueueDetailModel);
@@ -51,6 +57,19 @@ public class ConsumeQueueConsumeHandler {
         return messageFileMode.readContent(consumeQueueDetailModel.getMsgIndex(), consumeQueueDetailModel.getMsgLength());
     }
 
+    private boolean isReadable( int index,  String topicName, int queueId) {
+        EagleMqQueueModel queueModel = CommonCache.getTopicModel(topicName).getQueueInfo().stream().filter(c -> c.getId().equals(queueId)).findFirst().orElse(null);
+        if (null == queueModel){
+            log.error("消费消息 没有找到对应的消费队列 topic = {}", topicName);
+            throw new RuntimeException("没有找到对应的消费队列");
+        }
+        // 如果当前消息所在位置大于文件存储的位置 则停止读取
+        if (index >= queueModel.getLatestOffset().get()) {
+            return false;
+        }
+        return true;
+    }
+
 
     public boolean ack(String topicName, String consumeGroup, int queueId) {
         ConsumeQueueOffsetModel consumeQueueOffsetModel = CommonCache.getConsumeQueueOffsetModel();
@@ -61,8 +80,12 @@ public class ConsumeQueueConsumeHandler {
         String str = stringStringMap.get(String.valueOf(queueId));
         String[] split = str.split("#");
         String fileName = split[0];
-        int offset = Integer.parseInt(split[1]);
-        stringStringMap.put(String.valueOf(queueId), fileName + "#" + (offset + 12));
+        int index = Integer.parseInt(split[1]);
+        boolean readable = isReadable(index, topicName, queueId);
+        if (!readable){
+            return true;
+        }
+        stringStringMap.put(String.valueOf(queueId), fileName + "#" + (index + 12));
         return true;
     }
 

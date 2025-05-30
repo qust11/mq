@@ -44,12 +44,11 @@ public class CommitLogMMapFileMode {
 
     public void loadFileInMMap(String topicName, int offset, int length) {
         String filePath = getLatestFilePath(topicName);
-
+        this.topicName = topicName;
+        this.lock = new ReentrantLock();
         try {
             log.info("load file:{}", filePath);
             doMMap(filePath, offset, length);
-            this.topicName = topicName;
-            this.lock = new ReentrantLock();
         } catch (IOException e) {
             log.error("load file error", e);
         }
@@ -103,9 +102,8 @@ public class CommitLogMMapFileMode {
         ByteBuffer currentBuffer = readBuffer.slice();
         currentBuffer.position(pos);
         byte[] bytes = new byte[length];
-        int j = 0;
         for (int i = 0; i < length; i++) {
-            bytes[j++] = currentBuffer.get(length + i);
+            bytes[i] = currentBuffer.get(pos + i);
         }
         return bytes;
     }
@@ -119,7 +117,7 @@ public class CommitLogMMapFileMode {
 
             byte[] bytes = commitLogMessageModel.getBytes();
             mappedByteBuffer.put(bytes);
-            log.info("写入commitLog消息 topic={}, message={}：consumeQueueDetailBytes:{}", topicName, new String(bytes));
+            log.info("写入commitLog消息 topic={}, message={}：", topicName, new String(bytes));
 
             int sourceIndex = latestCommitLog.getOffset().get();
             latestCommitLog.getOffset().addAndGet(bytes.length);

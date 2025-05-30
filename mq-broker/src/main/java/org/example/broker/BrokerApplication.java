@@ -13,7 +13,9 @@ import org.example.broker.core.consumequeue.ConsumeQueueMMapFileModeManager;
 import org.example.broker.model.EagleMqTopicModel;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 /**
  * @author qushutao
@@ -61,32 +63,37 @@ public class BrokerApplication {
         String topicId = "order_cancel_topic";
         String consumeGroup = "order_cancel_consume_group";
 
-        for (int i = 0;i < 100;i++){
-//            commitLogAppendHandler.appendMessage(topicId, ("t-content" + i).getBytes());
-            byte[] consume = consumeQueueConsumeHandler.consume(topicId, consumeGroup, 0);
-            log.info("consume: {}", new String(consume));
-            consumeQueueConsumeHandler.ack(topicId, consumeGroup, 0);
-        }
-//        EagleMqTopicModel topicModel = CommonCache.getTopicModel();
-//        List<Thread> threads = new ArrayList<>();
-//        for (int i = 0; i < 10; i++) {
-//            int finalI = i;
-//            Thread thread = new Thread(() -> commitLogAppendHandler.appendMessage(topicModel.getTopic(), ("t-content" + finalI).getBytes()));
-//            threads.add(thread);
-//        }
-//        threads.forEach(Thread::start);
-//        threads.forEach(thread -> {
-//            try {
-//                thread.join();
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
+        // 一个写多个读取 看看会不会有并发问题
+//       new Thread(()->{
+//            for (int i = 0; i < 10000; i++) {
+//                commitLogAppendHandler.appendMessage(topicId, ("this is test content" + i).getBytes());
 //            }
-//        });
-//        byte[] bytes = commitLogAppendHandler.readMessage(topicModel.getTopic());
-//        for(int i = 0;i<= 50000;i++){
-//            commitLogAppendHandler.appendMessage("order_cancel_topic", ("t-content" + i).getBytes());
-//        }
-//        byte[] bytes = commitLogAppendHandler.readMessage("order_cancel_topic");
-//        log.info("bytes: {}", new String(bytes));
+//        }).start();
+
+       List<Thread> consumerList = new ArrayList<>();
+       for (int i = 0; i < 2; i++) {
+           Thread thread = new Thread(() -> {
+               while (true){
+                   byte[] bytes = consumeQueueConsumeHandler.consume(topicId, consumeGroup, 0);
+                   log.info("********************consume******************** ,Thread name = {}, content: {}",Thread.currentThread().getName(), new String(bytes));
+                   consumeQueueConsumeHandler.ack(topicId, consumeGroup, 0);
+                   try {
+                       Thread.sleep(100);
+                   } catch (InterruptedException e) {
+                       throw new RuntimeException(e);
+                   }
+               }
+           });
+           consumerList.add(thread);
+       }
+       consumerList.forEach(Thread::start);
+       consumerList.forEach(thread -> {
+           try {
+               thread.join();
+           } catch (InterruptedException e) {
+               throw new RuntimeException(e);
+           }
+       });
+
     }
 }
