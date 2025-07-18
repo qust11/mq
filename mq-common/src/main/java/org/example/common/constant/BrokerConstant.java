@@ -1,4 +1,4 @@
-package org.example.broker.constant;
+package org.example.common.constant;
 
 /**
  * @author qushutao

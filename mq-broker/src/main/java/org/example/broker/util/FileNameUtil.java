@@ -1,7 +1,7 @@
 package org.example.broker.util;
 
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
+import org.example.common.constant.BrokerConstant;
 
 /**
  * @author qushutao

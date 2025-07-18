@@ -4,9 +4,9 @@ import com.alibaba.fastjson2.JSONObject;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
 import org.example.broker.model.consume.ConsumeQueueOffsetModel;
 import org.example.broker.util.FileContentReaderUtil;
+import org.example.common.constant.BrokerConstant;
 
 import java.time.LocalTime;
 import java.util.HashMap;

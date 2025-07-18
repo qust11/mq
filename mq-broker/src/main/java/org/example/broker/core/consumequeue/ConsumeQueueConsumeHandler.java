@@ -1,13 +1,11 @@
 package org.example.broker.core.consumequeue;
 
-import io.micrometer.common.util.StringUtils;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
+import org.example.common.constant.BrokerConstant;
 import org.example.broker.core.CommitLogMMapFileMode;
 import org.example.broker.model.EagleMqQueueModel;
 import org.example.broker.model.consume.ConsumeQueueDetailModel;
 import org.example.broker.model.consume.ConsumeQueueOffsetModel;
-import org.example.broker.util.FileNameUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

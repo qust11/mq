@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
+import org.example.common.constant.BrokerConstant;
 import org.example.broker.core.consumequeue.ConsumeQueueMMapFileMode;
 import org.example.broker.model.CommitLogMessageModel;
 import org.example.broker.model.consume.ConsumeQueueDetailModel;

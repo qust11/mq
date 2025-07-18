@@ -2,7 +2,7 @@ package org.example.broker.config;
 
 import io.micrometer.common.util.StringUtils;
 import org.example.broker.cache.CommonCache;
-import org.example.broker.constant.BrokerConstant;
+import org.example.common.constant.BrokerConstant;
 
 /**
  * @author qushutao
